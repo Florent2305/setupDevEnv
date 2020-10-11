@@ -24,36 +24,38 @@ param ( [string]$SourceLnk, [string]$DestinationPath )
     $Shortcut.TargetPath = $DestinationPath
     $Shortcut.Save()
     }
-	
+    
 function download {
 param ( [string]$url, [string]$output )
     Write-Host "Download $output" -ForegroundColor green
     $start_time = Get-Date
-    Invoke-WebRequest -Uri $url -OutFile $output                  #Invoke-WebRequest Way
-    #(New-Object System.Net.WebClient).DownloadFile($url, $output)  #System.Net.WebClient Way
+    Invoke-WebRequest -Uri $url -OutFile $output                          #Invoke-WebRequest Way
+    #(New-Object System.Net.WebClient).DownloadFile($url, $output)        #System.Net.WebClient Way
     #(New-Object System.Net.Http.HttpClient).DownloadFile($url, $output)  #System.Net.WebClient Way
-    #Start-BitsTransfer -Source $url -Destination $output           #BITS-Transfer Way
+    #Start-BitsTransfer -Source $url -Destination $output                 #BITS-Transfer Way
     Write-Output "Time taken: $((Get-Date).Subtract($start_time))"
-    }
-	
+}
+    
 function add-openSSH {
 param ( [Switch]$enableOpenSSHServer )
-	Add-WindowsCapability -Online -Name OpenSSH.Client*
-	if($enableOpenSSHServer){	
-	    Add-WindowsCapability -Online -Name OpenSSH.Server*
-		}
-	mkdir $home\.ssh
-	$folder=get-item $home\.ssh -Force
+    Add-WindowsCapability -Online -Name OpenSSH.Client*
+    if($enableOpenSSHServer)
+    {    
+        Add-WindowsCapability -Online -Name OpenSSH.Server*
+    }    
+    New-Item -Path "$home" -Name ".ssh" -ItemType "directory" -Force
+    $folder=get-item $home\.ssh -Force
     $folder.attributes="Hidden"
-    }	
-	
+}    
+    
 function enable-symlinks {
-	fsutil behavior query SymlinkEvaluation
-    }	
+    fsutil behavior query SymlinkEvaluation
+}    
 
 ## ############################################################################
 ## PREPARE VARIABLES                                                         ##
 ## ############################################################################
+Write-Host "`r`nPREPARATION PHASE" -ForegroundColor Yellow
 $currentPath=Get-Location
 $installQt = $true
 if($openssh){
@@ -61,40 +63,36 @@ $SSHTOOL = "OpenSSH"
 }else{
 $SSHTOOL = "Plink"
 }
-echo $SSHTOOL
-echo $qtEmail
-echo $qtPass
 
-
-if( ( (-not ($qtEmail -eq "")) -and (-not ($qtEmail -eq $null) ) ) -and ( (-not ($qtPass -eq "")) -and (-not ($qtPass -eq $null) ) ) ){
-    $qtConfigFileCredsOption = "
-	Controller.prototype.QtAccountPageCallback = function() {
-    var page = gui.pageWidgetByObjectName(`"CredentialsPage`");
-    page.loginWidget.EmailLineEdit.setText(`"$qtEmail`");
-    page.loginWidget.PasswordLineEdit.setText(`"$qtPass`");
-    gui.clickButton(buttons.NextButton);"
-}else{
-	if([System.IO.File]::Exists("$currentPath\qtaccount.ini")){
-		Copy-Item "$currentPath\qtaccount.ini" -Destination "$home\AppData\Roaming\Qt\qtaccount.ini"
-		$qtConfigFileCredsOption = "
-		Controller.prototype.CredentialsPageCallback = function() {
-        logCurrentPage()
-        proceed()"		
-	}else{
-	$installQt = $false
-	Write-Host "`aQt5 can not be installed automatically. "  -ForegroundColor Red -BackgroundColor black;
-	Write-Host "Then installation of Qt5 will be skip.  "  -ForegroundColor blue -BackgroundColor DarkGray;
-	Write-Host "For the future, please use:             "  -ForegroundColor blue -BackgroundColor DarkGray;
-	Write-Host "qtEmail and qtPass script's parameters  "  -ForegroundColor blue -BackgroundColor DarkGray;
-	Write-Host "OR                                      "  -ForegroundColor blue -BackgroundColor DarkGray;
-	Write-Host "provide qtaccount.ini in curreent folder"  -ForegroundColor blue -BackgroundColor DarkGray;
-	}                       
+if( ( (-not ($qtEmail -eq "")) -and (-not ($qtEmail -eq $null) ) ) -and ( (-not ($qtPass -eq "")) -and (-not ($qtPass -eq $null) ) ) )
+{
+    Write-Host "Qt5 will be try to use QtCredential provided in parameters."
 }
-echo $qtConfigFileCredsOption
+elseif([System.IO.File]::Exists("$currentPath\qtaccount.ini"))
+{
+    Write-Host "Qt5 will be try to use provided qtaccount.ini"
+    Copy-Item "$currentPath\qtaccount.ini" -Destination "$home\AppData\Roaming\Qt\qtaccount.ini"
+}
+elseif([System.IO.File]::Exists("$home\AppData\Roaming\Qt\qtaccount.ini"))
+{
+    Write-Host "Qt5 will try to be installed with the local system qtaccount.ini"  -ForegroundColor Red -BackgroundColor DarkGray;
+}
+else
+{
+    $installQt = $false
+    Write-Host "`aQt5 can not be installed automatically. " -ForegroundColor Red  -BackgroundColor Black;
+    Write-Host "Then installation of Qt5 will be skip.  "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "For the future, please use:             "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "qtEmail and qtPass script's parameters  "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "OR                                      "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "provide qtaccount.ini in curreent folder"   -ForegroundColor Blue -BackgroundColor DarkGray;
+}                       
+
 
 ## ############################################################################
 ## CREATE DIFFRENTS CONFIGURATIONS FILES                                     ##
 ## ############################################################################
+Write-Host "`r`nCREATE CONFIG-FILES PHASE" -ForegroundColor Yellow
 $vsconfigTexteToWrite = "{
   `"version`": `"1.0`",
   `"components`": [
@@ -130,7 +128,7 @@ $vsconfigTexteToWrite = "{
 Remove-Item "$currentPath\.vsconfig" -ErrorAction Ignore
 ADD-content -path "$currentPath\.vsconfig" -value "$vsconfigTexteToWrite"
 
-$gitconfigTexteToWrite = "{
+$gitconfigTexteToWrite = "
 [Setup]
 Lang=default
 Dir=C:\Program Files\Git
@@ -152,7 +150,7 @@ UseCredentialManager=Enabled
 PerformanceTweaksFSCache=Enabled
 EnableSymlinks=Disabled
 EnablePseudoConsoleSupport=Disabled
-}"
+"
 Remove-Item "$currentPath\gitconfig.inf" -ErrorAction Ignore
 ADD-content -path "$currentPath\gitconfig.inf" -value "$gitconfigTexteToWrite"
 
@@ -191,10 +189,21 @@ Controller.prototype.WelcomePageCallback = function() {
     // For some reason, delay is needed.  Two seconds seems to be enough.
     proceed(buttons.NextButton, 3000)
 }
-/// Just click next -- that is sign in to Qt account if credentials are
-/// remembered from previous installs, or skip sign in otherwise.
-
-$qtConfigFileCredsOption
+Controller.prototype.CredentialsPageCallback = function() {
+    logCurrentPage();
+    var widget = gui.currentPageWidget();
+    var login = installer.environmentVariable(`"QT_CI_LOGIN`");
+    var password = installer.environmentVariable(`"QT_CI_PASSWORD`");
+    if(Boolean(`"$qtEmail`") && Boolean(`"$qtPass`")){
+        login = `"$qtEmail`";
+        password =`"$qtPass`";
+    }else if (login === "" || password === "") {
+        gui.clickButton(buttons.CommitButton);
+    }    
+    widget.loginWidget.EmailLineEdit.setText(login);
+    widget.loginWidget.PasswordLineEdit.setText(password);
+    gui.clickButton(buttons.CommitButton);
+}
 
 Controller.prototype.ObligationsPageCallback = function() {
     var page = gui.pageWidgetByObjectName(`"ObligationsPage`");
@@ -270,11 +279,11 @@ Controller.prototype.DynamicTelemetryPluginFormCallback = function() {
 Remove-Item "$currentPath\control_script.qs" -ErrorAction Ignore
 ADD-content -path "$currentPath\control_script.qs" -value "$qt5TexteToWrite"
 
-Write-Host "Press any key to continue..."
-$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+
 ## ############################################################################
 ## DOWNLOAD PHASE                                                            ##
 ## ############################################################################
+Write-Host "`r`nDOWNLOAD PHASE" -ForegroundColor Yellow
 download "https://download.visualstudio.microsoft.com/download/pr/5f6dfbf7-a8f7-4f36-9b9e-928867c28c08/da9f4f32990642c17a4188493949adcfd785c4058d7440b9cfe3b291bbb17424/vs_Community.exe" "vs_Community.exe"
 download "http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe"             "qt-setup.exe"
 download "https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.7z"                                   "boost.7z"
@@ -300,11 +309,17 @@ download "http://www.dependencywalker.com/depends22_x64.zip"                    
 download "https://netcologne.dl.sourceforge.net/project/winmerge/stable/2.16.8/WinMerge-2.16.8-x64-Setup.exe"      "WinMerge-setup.exe"
 }
 
-
+if($ci -or $fullset)
+{    
+    download "https://netcologne.dl.sourceforge.net/project/nsis/NSIS%203/3.06.1/nsis-3.06.1-setup.exe"                 "nsis-setup.exe"
+    download "https://www2.graphviz.org/Packages/stable/windows/10/cmake/Release/x64/graphviz-install-2.44.1-win64.exe" "graphviz-setup.exe"
+    download "http://doxygen.nl/files/doxygen-1.8.20-setup.exe"                                                         "doxygen-setup.exe"
+}
 
 ## ############################################################################
 ## INSTALLATION PHASE                                                        ##
 ## ############################################################################
+Write-Host "`r`nINSTALATION PHASE" -ForegroundColor Yellow
 ## 7-Zip
 Write-Host "Installing 7Zip" -ForegroundColor green
 $process = Start-Process -FilePath "$currentPath\7z-setup.exe" -ArgumentList "/S" -Wait -PassThru
@@ -336,31 +351,35 @@ $process = Start-Process -FilePath "$currentPath\vs_Community.exe" -ArgumentList
 Write-Output $process.ExitCode 
 
 ## Qt5
-if($installQt){
+if($installQt)
+{
     Write-Host "Installing Qt5" -ForegroundColor green
-	$process = Start-Process -FilePath "$currentPath\qt-setup.exe" -ArgumentList "--verbose", "--script", "control_script.qs" -Wait -PassThru
-	Write-Output $process.ExitCode
+    $process = Start-Process -FilePath "$currentPath\qt-setup.exe" -ArgumentList "--verbose", "--script", "control_script.qs" -Wait -PassThru
+    Write-Output $process.ExitCode
 }
 
 
 
 
 ## Putty
-if($putty -or $fullset){
+if($putty -or $fullset)
+{
     Write-Host "Installing Putty" -ForegroundColor green
     $process = Start-Process -FilePath msiexec.exe -ArgumentList "/i", "$currentPath\putty-setup.msi", "/qn" -Wait -PassThru
     Write-Output $process.ExitCode
 }
 
 ## OpenSSH
-if(  (-not $putty) -or $openssh -or $fullset){
+if(  (-not $putty) -or $openssh -or $fullset)
+{
     Write-Host "Installing OpenSSH" -ForegroundColor green
     add-openSSH -enableOpenSSHServer ($ci -or $fullset)    
     Write-Host "OpenSSH installation finished"
 }
 
 
-if($dev -or $devPlus -or $fullset){
+if($dev -or $devPlus -or $fullset)
+{
     ## ProcessExplorer
     Write-Host "Installing Process Explorer" -ForegroundColor green
     #[System.IO.Compression.ZipFile]::ExtractToDirectory("$currentPath\ProcessExplorer.zip", "$Env:windir\system32\ProcessExplorer")
@@ -373,7 +392,8 @@ if($dev -or $devPlus -or $fullset){
     Write-Output $process.ExitCode
 }
 
-if($devPlus -or $fullset){
+if($devPlus -or $fullset)
+{
     ## LLVM
     Write-Host "Installing LLVM" -ForegroundColor green
     $process = Start-Process -FilePath "$currentPath\LLVM-setup.exe" -ArgumentList "/S" -Wait -PassThru
@@ -396,22 +416,68 @@ if($devPlus -or $fullset){
     set-shortcut "$home\Desktop\Dependency walker.lnk" "$Env:windir\system32\dependencywalker\depends.exe"
 }
 
+if($ci -or $fullset)
+{    
+    ## NSIS
+    Write-Host "Installing NSIS" -ForegroundColor green
+    $process = Start-Process -FilePath "$currentPath\nsis-setup.exe" -ArgumentList "/S" -Wait -PassThru
+    Write-Output $process.ExitCode
+    
+    ## GraphViz
+    Write-Host "Installing GraphViz" -ForegroundColor green
+    $process = Start-Process -FilePath "$currentPath\graphviz-setup.exe" -ArgumentList "/S" -Wait -PassThru
+    Write-Output $process.ExitCode
+    
+    ## Doxygen
+    Write-Host "Installing Doxygen" -ForegroundColor green
+    $process = Start-Process -FilePath "$currentPath\doxygen-setup.exe" -ArgumentList "/VERYSILENT" -Wait -PassThru
+    Write-Output $process.ExitCode
+}
 ################################################################################
 ################################################################################
 ################################################################################
-Write-Host "Post installation phase" -ForegroundColor DarkYellow
+Write-Host "`r`nPost installation phase" -ForegroundColor Yellow
+
 Write-Host "Export Environement variables" -ForegroundColor green
-if($putty -and -not ( $openssh -or $fullset) ){
-    if($dev -or $devPlus){
+## Git-SSH variable
+if($putty -and -not ( $openssh -or $fullset) )
+{
+    if($dev -or $devPlus)
+    {
         [System.Environment]::SetEnvironmentVariable('GIT_SSH','C:\Program Files\TortoiseGit\bin\TortoiseGitPlink.exe',[System.EnvironmentVariableTarget]::Machine)
-	}else{	
+    }
+    else
+    {    
         [System.Environment]::SetEnvironmentVariable('GIT_SSH','C:\Program Files\PuTTY\plink.exe',[System.EnvironmentVariableTarget]::Machine)
-	}
+    }
+}
+elseif($openssh -or $fullset)
+{
+    [System.Environment]::SetEnvironmentVariable('GIT_SSH','C:\Windows\System32\OpenSSH\ssh.exe',[System.EnvironmentVariableTarget]::User)    
 }
 
+## Qt5 variable
+[System.Environment]::SetEnvironmentVariable('Qt5_DIR','C:\Qt\5.12.3\msvc2017_64\lib\cmake\Qt5',[System.EnvironmentVariableTarget]::User)
+
+
 Write-Host "Set .SSH folder" -ForegroundColor green
+
 New-Item -Path "$home" -Name ".ssh" -ItemType "directory" -Force
-if([System.IO.Directory]::Exists("$currentPath\.ssh\")){
+
+if([System.IO.Directory]::Exists("$currentPath\.ssh\"))
+{
     Copy-Item -Path "$currentPath\.ssh\*" -Destination "$home\.ssh\" -recurse -Force
 }
-Write-Host "END OF INSTALLATION" -ForegroundColor DarkYellow
+
+if($openssh -or $fullset)
+{
+    Get-Service ssh-agent
+    Get-Service -Name ssh-agent | Set-Service -StartupType Manual
+    ssh-agent.exe
+    if([System.IO.File]::Exists("$currentPath\qtaccount.ini"))
+    {
+        ssh-add "$home\.ssh\id_rsa"
+    }    
+}
+
+Write-Host "END OF INSTALLATION" -ForegroundColor Yellow
