@@ -83,11 +83,11 @@ elseif([System.IO.File]::Exists("$home\AppData\Roaming\Qt\qtaccount.ini"))
 else
 {
     $installQt = $false
-    Write-Host "`aQt5 can not be installed automatically."   -ForegroundColor Red  -BackgroundColor Black;
-    Write-Host "Then installation of Qt5 will be skip.  "    -ForegroundColor Blue -BackgroundColor DarkGray;
-    Write-Host "For the future, please use:             "    -ForegroundColor Blue -BackgroundColor DarkGray;
-    Write-Host "qtEmail and qtPass script parameters    "    -ForegroundColor Blue -BackgroundColor DarkGray;
-    Write-Host "OR                                      "    -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "`aQt5 can not be installed automatically.  " -ForegroundColor Red  -BackgroundColor Black;
+    Write-Host "Then installation of Qt5 will be skip.   "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "For the future, please use:              "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "qtEmail and qtPass script parameters     "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "OR                                       "   -ForegroundColor Blue -BackgroundColor DarkGray;
     Write-Host "provide qtaccount.ini in curreent folder."   -ForegroundColor Blue -BackgroundColor DarkGray;
 }                       
 
