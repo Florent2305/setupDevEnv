@@ -197,11 +197,12 @@ Controller.prototype.CredentialsPageCallback = function() {
     if(Boolean(`"$qtEmail`") && Boolean(`"$qtPass`")){
         login = `"$qtEmail`";
         password =`"$qtPass`";
-    }else if (login === "" || password === "") {
+    }else if (login === `"`" || password === `"`") {
         gui.clickButton(buttons.CommitButton);
-    }    
-    widget.loginWidget.EmailLineEdit.setText(login);
-    widget.loginWidget.PasswordLineEdit.setText(password);
+    }else{    
+        widget.loginWidget.EmailLineEdit.setText(login);
+        widget.loginWidget.PasswordLineEdit.setText(password);
+	}
     gui.clickButton(buttons.CommitButton);
 }
 
