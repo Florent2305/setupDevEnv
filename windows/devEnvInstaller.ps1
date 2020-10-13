@@ -9,14 +9,16 @@ param ([Switch]$dev,
  )
 
 ## ############################################################################
-## INCLUDE PROWERSHELL LIBRARIES                                             ##
+## INCLUDE POWERSHELL LIBRARIES                                              ##
 ## ############################################################################
+
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Import-Module BitsTransfer
 
 ## ############################################################################
-## DEFINE INSTESTING FUNCTIONS                                               ##
+## DEFINE INTERESTING FUNCTIONS                                              ##
 ## ############################################################################
+
 function set-shortcut {
 param ( [string]$SourceLnk, [string]$DestinationPath )
     $WshShell = New-Object -comObject WScript.Shell
@@ -55,6 +57,7 @@ function enable-symlinks {
 ## ############################################################################
 ## PREPARE VARIABLES                                                         ##
 ## ############################################################################
+
 Write-Host "`r`nPREPARATION PHASE" -ForegroundColor Yellow
 $currentPath=Get-Location
 $installQt = $true
@@ -66,11 +69,11 @@ $SSHTOOL = "Plink"
 
 if( ( (-not ($qtEmail -eq "")) -and (-not ($qtEmail -eq $null) ) ) -and ( (-not ($qtPass -eq "")) -and (-not ($qtPass -eq $null) ) ) )
 {
-    Write-Host "Qt5 will be try to use QtCredential provided in parameters."
+    Write-Host "Qt5 will try to use QtCredential provided in parameters."
 }
 elseif([System.IO.File]::Exists("$currentPath\qtaccount.ini"))
 {
-    Write-Host "Qt5 will be try to use provided qtaccount.ini"
+    Write-Host "Qt5 will try to use provided qtaccount.ini"
     Copy-Item "$currentPath\qtaccount.ini" -Destination "$home\AppData\Roaming\Qt\qtaccount.ini"
 }
 elseif([System.IO.File]::Exists("$home\AppData\Roaming\Qt\qtaccount.ini"))
@@ -80,18 +83,18 @@ elseif([System.IO.File]::Exists("$home\AppData\Roaming\Qt\qtaccount.ini"))
 else
 {
     $installQt = $false
-    Write-Host "`aQt5 can not be installed automatically. " -ForegroundColor Red  -BackgroundColor Black;
-    Write-Host "Then installation of Qt5 will be skip.  "   -ForegroundColor Blue -BackgroundColor DarkGray;
-    Write-Host "For the future, please use:             "   -ForegroundColor Blue -BackgroundColor DarkGray;
-    Write-Host "qtEmail and qtPass script's parameters  "   -ForegroundColor Blue -BackgroundColor DarkGray;
-    Write-Host "OR                                      "   -ForegroundColor Blue -BackgroundColor DarkGray;
-    Write-Host "provide qtaccount.ini in curreent folder"   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "`aQt5 can not be installed automatically.  " -ForegroundColor Red  -BackgroundColor Black;
+    Write-Host "Then installation of Qt5 will be skip.   "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "For the future, please use:              "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "qtEmail and qtPass script parameters     "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "OR                                       "   -ForegroundColor Blue -BackgroundColor DarkGray;
+    Write-Host "provide qtaccount.ini in curreent folder."   -ForegroundColor Blue -BackgroundColor DarkGray;
 }                       
 
+## ############################################################################
+## CREATE DIFFERENT CONFIGURATION FILES                                      ##
+## ############################################################################
 
-## ############################################################################
-## CREATE DIFFRENTS CONFIGURATIONS FILES                                     ##
-## ############################################################################
 Write-Host "`r`nCREATE CONFIG-FILES PHASE" -ForegroundColor Yellow
 $vsconfigTexteToWrite = "{
   `"version`": `"1.0`",
@@ -153,7 +156,6 @@ EnablePseudoConsoleSupport=Disabled
 "
 Remove-Item "$currentPath\gitconfig.inf" -ErrorAction Ignore
 ADD-content -path "$currentPath\gitconfig.inf" -value "$gitconfigTexteToWrite"
-
 
 $qt5TexteToWrite = "
 var InstallComponents = [
@@ -280,10 +282,10 @@ Controller.prototype.DynamicTelemetryPluginFormCallback = function() {
 Remove-Item "$currentPath\control_script.qs" -ErrorAction Ignore
 ADD-content -path "$currentPath\control_script.qs" -value "$qt5TexteToWrite"
 
-
 ## ############################################################################
 ## DOWNLOAD PHASE                                                            ##
 ## ############################################################################
+
 Write-Host "`r`nDOWNLOAD PHASE" -ForegroundColor Yellow
 download "https://download.visualstudio.microsoft.com/download/pr/5f6dfbf7-a8f7-4f36-9b9e-928867c28c08/da9f4f32990642c17a4188493949adcfd785c4058d7440b9cfe3b291bbb17424/vs_Community.exe" "vs_Community.exe"
 download "http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe"             "qt-setup.exe"
@@ -320,6 +322,7 @@ if($ci -or $fullset)
 ## ############################################################################
 ## INSTALLATION PHASE                                                        ##
 ## ############################################################################
+
 Write-Host "`r`nINSTALATION PHASE" -ForegroundColor Yellow
 ## 7-Zip
 Write-Host "Installing 7Zip" -ForegroundColor green
@@ -359,9 +362,6 @@ if($installQt)
     Write-Output $process.ExitCode
 }
 
-
-
-
 ## Putty
 if($putty -or $fullset)
 {
@@ -377,7 +377,6 @@ if(  (-not $putty) -or $openssh -or $fullset)
     add-openSSH -enableOpenSSHServer ($ci -or $fullset)    
     Write-Host "OpenSSH installation finished"
 }
-
 
 if($dev -or $devPlus -or $fullset)
 {
@@ -434,12 +433,14 @@ if($ci -or $fullset)
     $process = Start-Process -FilePath "$currentPath\doxygen-setup.exe" -ArgumentList "/VERYSILENT" -Wait -PassThru
     Write-Output $process.ExitCode
 }
-################################################################################
-################################################################################
-################################################################################
+
+## ############################################################################
+## POST INSTALLATION                                                         ##
+## ############################################################################
+
 Write-Host "`r`nPost installation phase" -ForegroundColor Yellow
 
-Write-Host "Export Environement variables" -ForegroundColor green
+Write-Host "Export Environment variables" -ForegroundColor green
 ## Git-SSH variable
 if($putty -and -not ( $openssh -or $fullset) )
 {
