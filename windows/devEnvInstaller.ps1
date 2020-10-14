@@ -11,14 +11,13 @@ param ([Switch]$dev,
 ## ############################################################################
 ## INCLUDE POWERSHELL LIBRARIES                                              ##
 ## ############################################################################
-
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Import-Module BitsTransfer
+
 
 ## ############################################################################
 ## DEFINE INTERESTING FUNCTIONS                                              ##
 ## ############################################################################
-
 function set-shortcut {
 param ( [string]$SourceLnk, [string]$DestinationPath )
     $WshShell = New-Object -comObject WScript.Shell
@@ -54,10 +53,10 @@ function enable-symlinks {
     fsutil behavior query SymlinkEvaluation
 }    
 
+
 ## ############################################################################
 ## PREPARE VARIABLES                                                         ##
 ## ############################################################################
-
 Write-Host "`r`nPREPARATION PHASE" -ForegroundColor Yellow
 $currentPath=Get-Location
 $installQt = $true
@@ -91,10 +90,10 @@ else
     Write-Host "provide qtaccount.ini in curreent folder."   -ForegroundColor Blue -BackgroundColor DarkGray;
 }                       
 
+
 ## ############################################################################
 ## CREATE DIFFERENT CONFIGURATION FILES                                      ##
 ## ############################################################################
-
 Write-Host "`r`nCREATE CONFIG-FILES PHASE" -ForegroundColor Yellow
 $vsconfigTexteToWrite = "{
   `"version`": `"1.0`",
@@ -282,10 +281,10 @@ Controller.prototype.DynamicTelemetryPluginFormCallback = function() {
 Remove-Item "$currentPath\control_script.qs" -ErrorAction Ignore
 ADD-content -path "$currentPath\control_script.qs" -value "$qt5TexteToWrite"
 
+
 ## ############################################################################
 ## DOWNLOAD PHASE                                                            ##
 ## ############################################################################
-
 Write-Host "`r`nDOWNLOAD PHASE" -ForegroundColor Yellow
 download "https://download.visualstudio.microsoft.com/download/pr/5f6dfbf7-a8f7-4f36-9b9e-928867c28c08/da9f4f32990642c17a4188493949adcfd785c4058d7440b9cfe3b291bbb17424/vs_Community.exe" "vs_Community.exe"
 download "http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe"             "qt-setup.exe"
@@ -319,10 +318,10 @@ if($ci -or $fullset)
     download "http://doxygen.nl/files/doxygen-1.8.20-setup.exe"                                                         "doxygen-setup.exe"
 }
 
+
 ## ############################################################################
 ## INSTALLATION PHASE                                                        ##
 ## ############################################################################
-
 Write-Host "`r`nINSTALATION PHASE" -ForegroundColor Yellow
 ## 7-Zip
 Write-Host "Installing 7Zip" -ForegroundColor green
@@ -410,7 +409,7 @@ if($devPlus -or $fullset)
     Write-Output $process.ExitCode
     
     ## Dependency walker
-    Write-Host "Installing WinMerge" -ForegroundColor green
+    Write-Host "Installing Dependency walker" -ForegroundColor green
     #[System.IO.Compression.ZipFile]::ExtractToDirectory("$currentPath\dependencywalker.zip", "$Env:windir\system32\dependencywalker")
     Expand-Archive -Path "$currentPath\dependencywalker.zip" -DestinationPath "$Env:windir\system32\dependencywalker" -Force
     set-shortcut "$home\Desktop\Dependency walker.lnk" "$Env:windir\system32\dependencywalker\depends.exe"
@@ -434,10 +433,10 @@ if($ci -or $fullset)
     Write-Output $process.ExitCode
 }
 
+
 ## ############################################################################
 ## POST INSTALLATION                                                         ##
 ## ############################################################################
-
 Write-Host "`r`nPost installation phase" -ForegroundColor Yellow
 
 Write-Host "Export Environment variables" -ForegroundColor green
@@ -455,17 +454,16 @@ if($putty -and -not ( $openssh -or $fullset) )
 }
 elseif($openssh -or $fullset)
 {
-    [System.Environment]::SetEnvironmentVariable('GIT_SSH','C:\Windows\System32\OpenSSH\ssh.exe',[System.EnvironmentVariableTarget]::User)    
+    [System.Environment]::SetEnvironmentVariable('GIT_SSH','C:\Windows\System32\OpenSSH\ssh.exe',[System.EnvironmentVariableTarget]::Machine)    
 }
 
 ## Qt5 variable
 [System.Environment]::SetEnvironmentVariable('Qt5_DIR','C:\Qt\5.12.3\msvc2017_64\lib\cmake\Qt5',[System.EnvironmentVariableTarget]::User)
 
 
+## SSH post-installation
 Write-Host "Set .SSH folder" -ForegroundColor green
-
 New-Item -Path "$home" -Name ".ssh" -ItemType "directory" -Force
-
 if([System.IO.Directory]::Exists("$currentPath\.ssh\"))
 {
     Copy-Item -Path "$currentPath\.ssh\*" -Destination "$home\.ssh\" -recurse -Force
@@ -476,10 +474,15 @@ if($openssh -or $fullset)
     Get-Service ssh-agent
     Get-Service -Name ssh-agent | Set-Service -StartupType Manual
     ssh-agent.exe
-    if([System.IO.File]::Exists("$currentPath\qtaccount.ini"))
+    if([System.IO.File]::Exists("$home\.ssh\id_rsa"))
     {
         ssh-add "$home\.ssh\id_rsa"
-    }    
+    }
+}
+
+if($ci -or $fullset)
+{    
+    New-NetFirewallRule -Protocol TCP -LocalPort 22 -Direction Inbound -Action Allow -DisplayName SSH
 }
 
 Write-Host "END OF INSTALLATION" -ForegroundColor Yellow
