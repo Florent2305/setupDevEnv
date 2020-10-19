@@ -1,12 +1,27 @@
-param ([Switch]$dev,
-    [Switch]$devPlus,
-    [Switch]$ci,
-    [Switch]$fullset,
-    [Switch]$putty,
-    [Switch]$openssh,
-    [string]$qtEmail,
-    [string]$qtPass
- )
+ <#
+.SYNOPSIS
+    .Install developemnt environement for C++/Qt with MS-VisualStudio 
+.DESCRIPTION
+    .
+.EXAMPLE
+    C:\PS> 
+    <Description of example>
+.NOTES
+    Author: Florent LERAY
+    Date:   17/10/2010   
+#>
+
+param ( [Switch]$dev     #Basic   installation and adding: Process-Explorer, TortoiseGit
+       ,[Switch]$devPlus #dev     installation and adding: LLVM, HardLinkShellExtention, dependencywalker, WinMerge
+       ,[Switch]$fullset #devPlus devPlus install + ci install 
+       ,[Switch]$ci      #Basic   installation and adding: OpenSSH (client and sever) + NSIS, Graphviz, Doxygen
+       ,[Switch]$putty   #Install Putty client. Use it as SSH client if no OpenSSH is installed.
+       ,[Switch]$openssh #Install OpenSSH client. Use it by default as SSH client, else use Putty.
+       ,[string]$qtEmail #Provide Qt account e-mail, use with -qtPass. (This way it's when you don't provide qtaccount.ini) 
+       ,[string]$qtPass  #Provide Qt account pass, use with -qtEmail.  (This way it's when you don't provide qtaccount.ini)
+       ,[Switch]$h       #Display this help.
+)
+
 
 ## ############################################################################
 ## INCLUDE POWERSHELL LIBRARIES                                              ##
@@ -37,6 +52,30 @@ param ( [string]$url, [string]$output )
     Write-Output "Time taken: $((Get-Date).Subtract($start_time))"
 }
     
+function anim-wait{
+param ( $process2 )  
+    $anim=@("|","/","-","\")
+    #for($i = 0; $i -le 100; $i = ($i + 1) % 100)
+    #{
+    #    Write-Progress -Activity "Installer" -PercentComplete $i -Status "Installing"
+    #    Start-Sleep -Milliseconds 100
+    #    if ($process2.HasExited) {
+    #        Write-Progress -Activity "Installer" -Completed
+    #        break
+    #    }
+    #}
+    
+    #or
+    
+    while (!($process2.HasExited))
+    {  
+      $anim | % {
+        Write-Host "`b$_" -NoNewline -ForegroundColor Yellow 
+        Start-Sleep -m 100
+      }
+    }
+}
+
 function add-openSSH {
 param ( [Switch]$enableOpenSSHServer )
     Add-WindowsCapability -Online -Name OpenSSH.Client*
@@ -53,6 +92,13 @@ function enable-symlinks {
     fsutil behavior query SymlinkEvaluation
 }    
 
+function help {
+    Get-help ($MyInvocation.InvocationName)
+    exit
+}
+
+cls
+if($h){help}
 
 ## ############################################################################
 ## PREPARE VARIABLES                                                         ##
@@ -350,14 +396,16 @@ Write-Output $process.ExitCode
 
 ## VisualStudio 2017 Community
 Write-Host "Installing VisualStudio 2017 Community" -ForegroundColor green
-$process = Start-Process -FilePath "$currentPath\vs_Community.exe" -ArgumentList "--config", "$currentPath\.vsconfig", "--quiet", "--norestart", "--wait" -Wait -PassThru
+$process = Start-Process -FilePath "$currentPath\vs_Community.exe" -ArgumentList "--config", "$currentPath\.vsconfig", "--quiet", "--norestart", "--wait" -PassThru
+anim-wait $process
 Write-Output $process.ExitCode 
 
 ## Qt5
 if($installQt)
 {
     Write-Host "Installing Qt5" -ForegroundColor green
-    $process = Start-Process -FilePath "$currentPath\qt-setup.exe" -ArgumentList "--verbose", "--script", "control_script.qs" -Wait -PassThru
+    $process = Start-Process -FilePath "$currentPath\qt-setup.exe" -ArgumentList "--script", "control_script.qs" -PassThru
+    anim-wait $process
     Write-Output $process.ExitCode
 }
 
@@ -477,6 +525,17 @@ if($openssh -or $fullset)
     if([System.IO.File]::Exists("$home\.ssh\id_rsa"))
     {
         ssh-add "$home\.ssh\id_rsa"
+    }
+    if([System.IO.File]::Exists("$home\.ssh\authorized_keys"))
+    {
+        Get-Content "$home\.ssh\authorized_keys" | Add-Content -Path "C:\ProgramData\ssh\administrators_authorized_keys"
+        $acl = Get-Acl C:\ProgramData\ssh\administrators_authorized_keys
+        $acl.SetAccessRuleProtection($true, $false)
+        $administratorsRule = New-Object system.security.accesscontrol.filesystemaccessrule("Administrators","FullControl","Allow")
+        $systemRule = New-Object system.security.accesscontrol.filesystemaccessrule("SYSTEM","FullControl","Allow")
+        $acl.SetAccessRule($administratorsRule)
+        $acl.SetAccessRule($systemRule)
+        $acl | Set-Acl
     }
 }
 
