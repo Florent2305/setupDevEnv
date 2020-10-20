@@ -1,11 +1,34 @@
  <#
 .SYNOPSIS
-    .Install developemnt environement for C++/Qt with MS-VisualStudio 
+    Install developemnt environement for C++/Qt with MS-VisualStudio 
 .DESCRIPTION
-    .
+    Install developemnt environement for C++ with many utils software:
+    
+    VisualStudio 2017 Community, CMake 7-Zip, Boost, Notepad++, GIT,
+    Qt5, Putty, OpenSSH, ProcessExplorer, Tortoise Git, LLVM,
+    HardLink Shell Extion, WinMerge, Dependency walker, NSIS,
+    GraphViz, Doxygen.
+    
+    You can also put in the current directory:
+        qtaccount.ini          Use it for Qt loggin
+        \.ssh\                 Copy the content of foler into C:\Users\<user>\.ssh
+        \.ssh\id_rsa           If this file is present add this file to openSSH
+        \.ssh\authorized_keys  If this file is present the content to allowed public keys
+    
 .EXAMPLE
-    C:\PS> 
-    <Description of example>
+    powershell.exe -executionpolicy bypass -noexit -file "C:\devInst\devEnvInstaller.ps1" -ci -fullset -qtEmail John.Doe@gmail.com -qtPass MyQtPassword
+    
+    This command line install full devellopement tools and ci tools
+    
+.EXAMPLE
+    On current directory place qtaccount.ini, .ssh folder with  id_rsa and authorized_keys
+    
+    powershell.exe -executionpolicy bypass -noexit -file "C:\devInst\devEnvInstaller.ps1" -ci
+    
+    Thhis command line install for a minimal continus integration.
+    This is with a public key into authorized_keys file for jenkins connection for example.
+    And a privet key into id_rsa to connect to your favorit git repository like gitlab and github.
+
 .NOTES
     Author: Florent LERAY
     Date:   17/10/2010   
@@ -78,6 +101,7 @@ param ( $process2 )
 
 function add-openSSH {
 param ( [Switch]$enableOpenSSHServer )
+    # https://docs.microsoft.com/fr-fr/windows-server/administration/openssh/openssh_overview
     Add-WindowsCapability -Online -Name OpenSSH.Client*
     if($enableOpenSSHServer)
     {    
@@ -93,7 +117,7 @@ function enable-symlinks {
 }    
 
 function help {
-    Get-help ($MyInvocation.InvocationName)
+    Get-help $PSCommandPath -detailed
     exit
 }
 
