@@ -1,11 +1,48 @@
  <#
 .SYNOPSIS
-    .Install developemnt environement for C++/Qt with MS-VisualStudio 
+    Install developemnt environement for C++/Qt with MS-VisualStudio 
 .DESCRIPTION
-    .
+    Install developemnt environement for C++ with many utils software:
+    
+    VisualStudio 2017 Community, CMake 7-Zip, Boost, Notepad++, GIT,
+    Qt5, Putty, OpenSSH, ProcessExplorer, Tortoise Git, LLVM,
+    HardLink Shell Extion, WinMerge, Dependency walker, NSIS,
+    GraphViz, Doxygen.
+    
+    You can also put in the current directory:
+        qtaccount.ini          Use it for Qt loggin
+        \.ssh\                 Copy the content of foler into C:\Users\<user>\.ssh
+        \.ssh\id_rsa           If this file is present add this file to openSSH
+        \.ssh\authorized_keys  If this file is present the content to allowed public keys
+    
 .EXAMPLE
-    C:\PS> 
-    <Description of example>
+    powershell.exe -executionpolicy bypass -noexit -file "C:\devInst\devEnvInstaller.ps1" -ci -fullset -qtEmail John.Doe@gmail.com -qtPass MyQtPassword
+    
+    This command line install full development tools and ci tools.
+    
+.EXAMPLE
+    On current directory place qtaccount.ini, .ssh folder with  id_rsa and authorized_keys
+    
+    powershell.exe -executionpolicy bypass -noexit -file "C:\devInst\devEnvInstaller.ps1" -ci
+    
+    Thhis command line install for a minimal continus integration.
+    This is with a public key into authorized_keys file for jenkins connection for example.
+    And a privet key into id_rsa to connect to your favorit git repository like gitlab and github.
+    
+.EXAMPLE
+    For this example we assume curent directory is "C:\devInst\"
+    Download me on fresh instance:
+        Invoke-WebRequest -Uri https://raw.githubusercontent.com/Florent2305/setupDevEnv/master/windows/devEnvInstaller.ps1 -OutFile devEnvInstaller.ps1
+        Invoke-WebRequest -Uri https://raw.githubusercontent.com/Florent2305/setupDevEnv/master/windows/add-pubkey.ps1 -OutFile add-pubkey.ps1
+    Copy on the in the current directory of this script on the new instance, with your favorite method:
+        - qtaccount.ini
+        - \.ssh\id_rsa
+        - \.ssh\authorized_keys
+    Run command:
+        powershell.exe -executionpolicy bypass -noexit -file "C:\devInst\devEnvInstaller.ps1" -ci -fullset
+    
+    This command line install full development tools and ci tools.
+
 .NOTES
     Author: Florent LERAY
     Date:   17/10/2010   
@@ -78,6 +115,7 @@ param ( $process2 )
 
 function add-openSSH {
 param ( [Switch]$enableOpenSSHServer )
+    # https://docs.microsoft.com/fr-fr/windows-server/administration/openssh/openssh_overview
     Add-WindowsCapability -Online -Name OpenSSH.Client*
     if($enableOpenSSHServer)
     {    
@@ -90,10 +128,14 @@ param ( [Switch]$enableOpenSSHServer )
     
 function enable-symlinks {
     fsutil behavior query SymlinkEvaluation
-}    
+}
+
+function clean-windows {
+    dism.exe /online /cleanup-image /spsuperseded /hidesp
+}
 
 function help {
-    Get-help ($MyInvocation.InvocationName)
+    Get-help $PSCommandPath -detailed
     exit
 }
 
@@ -332,6 +374,7 @@ ADD-content -path "$currentPath\control_script.qs" -value "$qt5TexteToWrite"
 ## DOWNLOAD PHASE                                                            ##
 ## ############################################################################
 Write-Host "`r`nDOWNLOAD PHASE" -ForegroundColor Yellow
+download "https://github.com/microsoft/winget-cli/releases/download/v0.1.4331-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle" "Winget.appx"
 download "https://download.visualstudio.microsoft.com/download/pr/5f6dfbf7-a8f7-4f36-9b9e-928867c28c08/da9f4f32990642c17a4188493949adcfd785c4058d7440b9cfe3b291bbb17424/vs_Community.exe" "vs_Community.exe"
 download "http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe"             "qt-setup.exe"
 download "https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.7z"                                   "boost.7z"
@@ -369,6 +412,10 @@ if($ci -or $fullset)
 ## INSTALLATION PHASE                                                        ##
 ## ############################################################################
 Write-Host "`r`nINSTALATION PHASE" -ForegroundColor Yellow
+## WinGet
+Write-Host "WinGet" -ForegroundColor green
+Add-AppxPackage .\Winget.appx 
+
 ## 7-Zip
 Write-Host "Installing 7Zip" -ForegroundColor green
 $process = Start-Process -FilePath "$currentPath\7z-setup.exe" -ArgumentList "/S" -Wait -PassThru
@@ -427,6 +474,10 @@ if(  (-not $putty) -or $openssh -or $fullset)
 
 if($dev -or $devPlus -or $fullset)
 {
+    ## WindowsTerminal #enable these lines only on local installation
+    #Write-Host "Installing Process Explorer" -ForegroundColor green
+    #winget install -e "Windows Terminal" --id Microsoft.WindowsTerminal -h
+    
     ## ProcessExplorer
     Write-Host "Installing Process Explorer" -ForegroundColor green
     #[System.IO.Compression.ZipFile]::ExtractToDirectory("$currentPath\ProcessExplorer.zip", "$Env:windir\system32\ProcessExplorer")
@@ -540,8 +591,14 @@ if($openssh -or $fullset)
 }
 
 if($ci -or $fullset)
-{    
-    New-NetFirewallRule -Protocol TCP -LocalPort 22 -Direction Inbound -Action Allow -DisplayName SSH
+{
+    Start-Service sshd
+    Set-Service -Name sshd -StartupType 'Automatic'
+    # New-NetFirewallRule -Protocol TCP -LocalPort 22 -Direction Inbound -Action Allow -DisplayName SSH # Open port 22 for all
+    New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 # Open port 22 just for sshd
 }
-
 Write-Host "END OF INSTALLATION" -ForegroundColor Yellow
+
+Write-Host "`r`nIt's highly recommended to reboot your computer." -ForegroundColor Yellow
+Write-Host "For security and confidentiality:"                    -ForegroundColor Yellow
+Write-Host "Please remove control_script.qs and .\ssh"            -ForegroundColor Yellow
