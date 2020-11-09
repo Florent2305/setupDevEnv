@@ -160,6 +160,10 @@ if( ( (-not ($qtEmail -eq "")) -and (-not ($qtEmail -eq $null) ) ) -and ( (-not 
 }
 elseif([System.IO.File]::Exists("$currentPath\qtaccount.ini"))
 {
+    if([System.IO.Directory]::Exists("$home\AppData\Roaming\Qt\"))
+    {
+        New-Item -Path "$home\AppData\Roaming" -Name "Qt" -ItemType "directory" -Force
+    }
     Write-Host "Qt5 will try to use provided qtaccount.ini"
     Copy-Item "$currentPath\qtaccount.ini" -Destination "$home\AppData\Roaming\Qt\qtaccount.ini"
 }
